@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Path to the changelog file
+CHANGELOG_FILE="CHANGELOG.md"
+
+# Commit containing files having those tokens in their paths are ignored
+# "token1|token2"
+IGNORED_TOKENS="/secret/|/private/"
+
+# Check if the commit contains a message starting with 'feat' or 'fix'
+COMMIT_MSG=$(git log -1 --pretty=%B)
+
+if [[ ! "$COMMIT_MSG" =~ ^(feat|fix) ]]; then
+  exit 0
+fi
+
+# Check if any file in the commit contains an ignored token (e.g., /dream/ or CHANGELOG.md)
+FILES_CHANGED=$(git diff-tree --no-commit-id --name-only -r HEAD)
+
+for FILE in $FILES_CHANGED; do
+  if [[ "$FILE" =~ $IGNORED_TOKENS ]]; then
+    exit 0
+  fi
+done
+
+# Get the current timestamp in the format "YYYY-MM-DD HHhMM"
+TIMESTAMP=$(date "+%Y-%m-%d %Hh%M")
+
+# Create the changelog entry with the commit timestamp and message
+CHANGELOG_ENTRY="\`$TIMESTAMP\` $COMMIT_MSG  "
+
+# Check if the CHANGELOG.md file exists
+if [ -f "$CHANGELOG_FILE" ]; then
+  # Find the line with "<!-- Edit below -->" and insert the entry after it
+  sed -i "/<!-- Edit below -->/a $CHANGELOG_ENTRY" "$CHANGELOG_FILE"
+else
+  echo "Error: $CHANGELOG_FILE does not exist"
+  exit 1
+fi
